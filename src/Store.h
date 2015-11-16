@@ -30,7 +30,8 @@ public:
 	Store(int particles);	
 	void fileOpen();
 	void print(float theta);
-	void printCoord(float x, float y);
+	void printGroupSize(int groupSize);
+	void printTime(float time);
 	void fileClose();
 	void endl();
 	~Store();

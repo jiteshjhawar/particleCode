@@ -6,9 +6,9 @@
 #include <math.h>
 
 Particle::Particle(){}
-
+//This function initialises coordinate vectors and velocitiy vectors of one particle
 void Particle::init(float systemSize, float noise){
-	coord.x = (1.0 * rand() / RAND_MAX) * systemSize;
+	coord.x = (1.0 * rand() / RAND_MAX) * systemSize;	
 	coord.y = (1.0 * rand() / RAND_MAX) * systemSize;
 	theta = (2.0 * rand() / RAND_MAX) * M_PI;
 	dir.x = cos(theta);

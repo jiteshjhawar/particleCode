@@ -16,7 +16,7 @@ Store::Store(int particles){
 }
 
 void Store::fileOpen (){
-	out = "/home/jitesh/Documents/c++/cuda/particleAlignment/output/";
+	out = "/home/jiteshjhawar/Documents/c++/cuda/particleGroupDist/output/";
 	name = "/orientationParamWithNoise";
 	format = ".csv";
 	ss << out << name << format;
@@ -28,8 +28,12 @@ void Store::print(float theta){
 	fout << orientationParam << "," << theta;
 }
 
-void Store::printCoord(float x, float y){
-	fout << x << "," << y << ",";
+void Store::printGroupSize(int groupSize){
+	fout << groupSize << "\n";
+}
+
+void Store::printTime(float time){
+	fout << "t = " << time << " ms.\n";
 }
 
 void Store::endl(){

@@ -4,78 +4,90 @@
 	*/
 
 #include <iostream>
-#include <SDL2/SDL.h>
-#include "Screen.h"
+//#include <SDL2/SDL.h>
+//#include "Screen.h"
+#include "../utils/simple_timer.h"
 #include "Swarm.h"
 #include "Store.h"
 using namespace std;
 
 int main (int argc, char *argv[]){
-	srand(time(NULL));
-	time_t t;
+	srand(time(NULL));		//seeding rand with time
+	time_t t;				
 	time(&t);
-	const float systemSize = 5.0;
-	const int particles = 100;
-	const float maxeta = 5.0;
-	const int realisations = 1;
-	const int iterations = 2000;
-	const int last = 100;
+	const float systemSize = 32.0;		
+	const int particles = 1024;
+	const float maxeta = 1.5;		//maximum noise parameter
+	const int realisations = 200;	//number of realisations
+	const int iterations = 3000;	//number of time steps
+	const int last = 100;			//number of last steps over which order parameter would be averaged
 	int c;
-	float theta;
-	Store store(particles);
+	int *gsd;						//pointer to initialise array that stores different group size 
+	float timeElapsed;
+	Store store(particles);			//Store class object 
 	store.fileOpen();
 	Swarm swarm(particles, systemSize);
 	swarm.allocate();
 	swarm.launchRandInit((unsigned long) t);
-	for (float eta = 0.0; eta <= maxeta; eta = eta + 1.0){
-		store.orientationParam = 0.0;
-		for (int rep = 0; rep < realisations; rep++){	
+	SimpleTimer time; time.reset();
+	time.start();
+	for (float eta = maxeta; eta <= maxeta; eta = eta + 0.2){		//loop to iterate over different noise values
+		store.orientationParam = 0.0;				//initialize OP to zero before each round of replication
+		for (int rep = 0; rep < realisations; rep++){		//loop to perform more number of realizations
 			swarm.init(eta);
+			swarm.initid();
 			swarm.cudaCopy();
-			Screen screen;
-			if (screen.init() == false) {
+			/*Screen screen;
+			if (screen.init() == false){
 				cout << "error initialising SDL." << endl;
-			}
-			c = 0;
-			for (int i = 0; i < iterations; i++){
-				screen.clear();
+			}*/
+			for (int i = 0; i < iterations; i++){		//loop to run the simulations for number of timesteps
+				//screen.clear();
 				swarm.update();
-				swarm.cudaBackCopy();
-				//store.msd[i] += swarm.calcMSD(); //store msd for each time step in an array also sum each value for many
-				/*theta = swarm.returnRandTheta();
-				store.print(theta, i);*/
-				const Particle * const pParticles = swarm.returnParticles();
+				/*const Particle * const pParticles = swarm.returnParticles();	//store the particle
 				swarm.cudaBackCopy();
 				for (int p = 0; p < particles; p++){
 					Particle particle = pParticles[p];
 
-					float x = particle.coord.x * Screen::SCREEN_WIDTH / systemSize;
-					float y = particle.coord.y * Screen::SCREEN_HEIGHT / systemSize;
+					int x = particle.coord.x * Screen::SCREEN_WIDTH / systemSize;
+					int y = particle.coord.y * Screen::SCREEN_HEIGHT / systemSize;
 					//store.printCoord(x,y);
 					screen.setPixel(x, y, 125, 255, 125);
 					}
-				screen.update();	
-				if (i >= 1000){
-					//swarm.cudaBackCopy();
+				screen.update();*/	
+				/*if (i >= iterations - last){
+					swarm.cudaBackCopy();
 					store.orientationParam += swarm.calcOrderparam();
 				}
-				c++;
-				/*if (screen.processEvents() == false || c == iterations){
+				if (screen.processEvents() == false || c == iterations){
 					break;
 				}*/
 			}
-			screen.close();
-			
+			//screen.close();
+			if (cudaDeviceSynchronize() != cudaSuccess)
+				cout << "Device synchronisation failed \n";
+			swarm.cudaUniteIdBackCopy();
+			swarm.grouping();
+			c = swarm.findgroups();
+			//cout << "number of independent groups are " << c << "\n";
+			gsd = new int[c];
+			swarm.calcgsd(gsd);
+			for (int i = 0; i < c; i++){
+				store.printGroupSize(gsd[i]);
+			}
+			store.endl();	
 		}
+		/*store.endl();
 		store.orientationParam = store.orientationParam / realisations / last;
+		//cout << store.orientationParam << "\n";
 		store.print(eta);
-		store.endl();
-		/*for (int i = 0; i < iterations; i++){
-			store.msd[i] = store.msd[i] / realisations / last / particles; //calculate average msd for each time step
-			store.print(eta, i);
-		}*/
+		store.endl();*/
 	}
+	time.stop();
+	timeElapsed = time.printTime();
+	store.printTime(timeElapsed);
 	store.fileClose();
 	
+	delete []gsd;
 	return 0;
 }
