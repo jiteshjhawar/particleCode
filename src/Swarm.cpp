@@ -6,9 +6,10 @@
 #include "Swarm.h"
 #include <cuda_runtime.h>
 //constructor initialising system size, number of particles
-Swarm::Swarm(int n, float L){
+Swarm::Swarm(int n, float L, int nPred){
 	systemSize = L;	
 	nParticles = n;
+	nPredators = nPred;
 	h_particles = new Particle[nParticles];	 //Particle type array of size of number of particles
 	h_id = new int[nParticles];	//array to store grouping ids of particles
 	h_sz = new int[nParticles];	//array to store group size of the group to which a particle belongs
@@ -22,6 +23,13 @@ for (int i = 0; i < nParticles; i++){
 		h_particles[i].init(systemSize, noise);
 	}
 }
+//initialise predator
+void Swarm::initPredator(float predNoise){
+	h_predators = new Predator[nPredators];
+	for (int i = 0; i < nPredators; i++){
+		h_predators[i].init(systemSize, predNoise);
+	}
+}
 //initialise group ids and group size of each particle
 void Swarm::initid(){
 for (int i = 0; i < nParticles; i++){
@@ -32,6 +40,7 @@ for (int i = 0; i < nParticles; i++){
 //Memory allocation on the GPU
 int Swarm::allocate(){
 	checkCudaErrors(cudaMalloc(&d_particles, size));
+	checkCudaErrors(cudaMalloc(&d_predators, sizeof(Predator) * nPredators));
 	checkCudaErrors(cudaMalloc(&d_sumdir, sizeof(float2) * nParticles));
 	checkCudaErrors(cudaMalloc(&d_c, sizeof(float) * nParticles));
 	checkCudaErrors(cudaMalloc(&d_dist, sizeof(float) * nParticles * nParticles));
@@ -44,9 +53,13 @@ int Swarm::allocate(){
 int Swarm::cudaCopy(){
 	checkCudaErrors(cudaMemcpy(d_particles, h_particles, size, cudaMemcpyHostToDevice));
 }
+
+int Swarm::cudaCopyPred(){
+	checkCudaErrors(cudaMemcpy(d_predators, h_predators, sizeof(Predator) * nPredators, cudaMemcpyHostToDevice));
+}
 //update function that is called in the main program at each iterations that updates particle velocity and coordinates
 int Swarm::update(){
-	launchUpdateKernel(nParticles, systemSize);	//function to launch updation kernel. (defined in kernel.cu)
+	launchUpdateKernel(nParticles, systemSize, nPredators);	//function to launch updation kernel. (defined in kernel.cu)
 }
 //function that is used after the last time step in order to perform union operation using unite ids. 
 int Swarm::grouping(){
@@ -55,6 +68,7 @@ int Swarm::grouping(){
 //function to copy Particle type array from GPU to CPU
 int Swarm::cudaBackCopy(){
 	checkCudaErrors(cudaMemcpy(h_particles, d_particles, size, cudaMemcpyDeviceToHost));
+	//checkCudaErrors(cudaMemcpy(h_predators, d_predators, sizeof(Predator) * nPredators, cudaMemcpyDeviceToHost));
 }
 //function to copy unite IDs array from GPU to CPU
 int Swarm::cudaUniteIdBackCopy(){
@@ -102,11 +116,13 @@ void Swarm::calcgsd(int *gsd){
 
 Swarm::~Swarm(){
 	delete []h_particles;
+	delete []h_predators;
 	delete []h_id;
 	delete []h_sz;
 	delete []h_uniteIdx;
 	delete []h_uniteIdy;
 	cudaFree(d_particles);
+	cudaFree(d_predators);
 	cudaFree(d_sumdir);
 	cudaFree(d_c);
 	cudaFree(d_dist);

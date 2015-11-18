@@ -17,6 +17,7 @@ public:
 	float theta;	//angle with x axis of the velocity vector of a particle
 	const static float speed = 0.03;	//initialise speed for the particle
 	const static float Rs = 1.0;		//initialise radius of interation of a particle
+	const static float Rd = 2.0;
 	float eta;	//parameter that controls noise of a particle
 	
 public:

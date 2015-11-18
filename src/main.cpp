@@ -4,8 +4,8 @@
 	*/
 
 #include <iostream>
-//#include <SDL2/SDL.h>
-//#include "Screen.h"
+#include <SDL2/SDL.h>
+#include "Screen.h"
 #include "../utils/simple_timer.h"
 #include "Swarm.h"
 #include "Store.h"
@@ -15,18 +15,20 @@ int main (int argc, char *argv[]){
 	srand(time(NULL));		//seeding rand with time
 	time_t t;				
 	time(&t);
-	const float systemSize = 32.0;		
-	const int particles = 1024;
-	const float maxeta = 1.5;		//maximum noise parameter
-	const int realisations = 200;	//number of realisations
-	const int iterations = 3000;	//number of time steps
+	const float systemSize = 16.0;		
+	const int particles = 256;
+	const int nPred = 1;
+	const float maxeta = 1.0;		//maximum noise parameter
+	float predNoise = 0.0;
+	const int realisations = 1;	//number of realisations
+	const int iterations = 15000;	//number of time steps
 	const int last = 100;			//number of last steps over which order parameter would be averaged
 	int c;
 	int *gsd;						//pointer to initialise array that stores different group size 
 	float timeElapsed;
 	Store store(particles);			//Store class object 
 	store.fileOpen();
-	Swarm swarm(particles, systemSize);
+	Swarm swarm(particles, systemSize, nPred);
 	swarm.allocate();
 	swarm.launchRandInit((unsigned long) t);
 	SimpleTimer time; time.reset();
@@ -35,17 +37,17 @@ int main (int argc, char *argv[]){
 		store.orientationParam = 0.0;				//initialize OP to zero before each round of replication
 		for (int rep = 0; rep < realisations; rep++){		//loop to perform more number of realizations
 			swarm.init(eta);
+			swarm.initPredator(predNoise);
 			swarm.initid();
 			swarm.cudaCopy();
-			/*Screen screen;
+			Screen screen;
 			if (screen.init() == false){
 				cout << "error initialising SDL." << endl;
-			}*/
+			}
 			for (int i = 0; i < iterations; i++){		//loop to run the simulations for number of timesteps
-				//screen.clear();
+				screen.clear();
 				swarm.update();
-				/*const Particle * const pParticles = swarm.returnParticles();	//store the particle
-				swarm.cudaBackCopy();
+				const Particle * const pParticles = swarm.returnParticles();	//store the particle
 				for (int p = 0; p < particles; p++){
 					Particle particle = pParticles[p];
 
@@ -54,16 +56,25 @@ int main (int argc, char *argv[]){
 					//store.printCoord(x,y);
 					screen.setPixel(x, y, 125, 255, 125);
 					}
-				screen.update();*/	
-				/*if (i >= iterations - last){
+				const Predator * const pPredators = swarm.returnPredators();
+				for (int p = 0; p < nPred; p++){
+					Predator predator = pPredators[p];
+
+					int x = predator.coord.x * Screen::SCREEN_WIDTH / systemSize;
+					int y = predator.coord.y * Screen::SCREEN_HEIGHT / systemSize;
+					//store.printCoord(x,y);
+					screen.setPixel(x, y, 255, 0, 0);
+					}
+				screen.update();	
+				if (i >= iterations - last){
 					swarm.cudaBackCopy();
 					store.orientationParam += swarm.calcOrderparam();
 				}
-				if (screen.processEvents() == false || c == iterations){
+				if (screen.processEvents() == false){
 					break;
-				}*/
+				}
 			}
-			//screen.close();
+			screen.close();
 			if (cudaDeviceSynchronize() != cudaSuccess)
 				cout << "Device synchronisation failed \n";
 			swarm.cudaUniteIdBackCopy();

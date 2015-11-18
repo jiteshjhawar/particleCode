@@ -47,7 +47,7 @@ bool Screen::init() {
 		return false;
 	}
 
-	m_buffer = new Uint32[SCREEN_WIDTH * SCREEN_HEIGHT];
+	m_buffer = new Uint32[(SCREEN_WIDTH + 1) * (SCREEN_HEIGHT + 1)];
 
 	memset(m_buffer, 0, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(Uint32));
 
@@ -60,7 +60,7 @@ void Screen::clear(){
 
 void Screen::setPixel(int x, int y, Uint8 red, Uint8 green, Uint8 blue) {
 
-	if (x < 0 || x >= SCREEN_WIDTH || y < 0 || y >= SCREEN_HEIGHT){
+	if (x < 1 || x >= SCREEN_WIDTH || y < 1 || y >= SCREEN_HEIGHT){
 		return;
 	}
 	Uint32 color = 0;
@@ -73,6 +73,10 @@ void Screen::setPixel(int x, int y, Uint8 red, Uint8 green, Uint8 blue) {
 	color += 0xFF;
 
 	m_buffer[(y * SCREEN_WIDTH) + x] = color;
+	m_buffer[((y+1) * SCREEN_WIDTH) + x] = color;
+	m_buffer[((y-1) * SCREEN_WIDTH) + x] = color;
+	m_buffer[(y * SCREEN_WIDTH) + x+1] = color;
+	m_buffer[(y * SCREEN_WIDTH) + x-1] = color;
 }
 
 void Screen::update() {
