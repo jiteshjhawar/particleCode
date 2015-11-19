@@ -29,6 +29,14 @@ inline __device__ __host__ float calcDist (float2 a, float2 b, float L){
 	dist = powf((powf(dx, 2) + powf(dy, 2)), 0.5);
 	return dist;
 }
+//function to calculate distance w.r.t. predator
+inline __device__ __host__ float predDist(float2 a, float2 b, float L){
+	float dx, dy, dist;
+	dx = a.x - b.x;
+	dy = a.y - b.y;
+	dist = powf((powf(dx, 2) + powf(dy, 2)), 0.5);
+	return dist;
+}
 //function that returns the root/parent of a particle
 inline __device__ __host__ int root (int i, int *id){
 	while (i != id[i]){
@@ -74,14 +82,17 @@ __device__ __host__ void alignmentFunction (Particle *d_particles, int nParticle
 __device__ __host__ void predRepulsion(Particle *d_particles, int nParticles, Predator *d_predators, int nPredators, float L, int pid){
 	float dist;
 	for (int i = 0; i < nPredators; i++){
-		dist = calcDist(d_particles[pid].coord, d_predators[i].coord, L);
-	if (dist < Particle::Rd)
+		dist = predDist(d_particles[pid].coord, d_predators[i].coord, L);
+	if (dist < Particle::Rd && dist < L/2)
+		d_particles[pid].dir = d_particles[pid].coord - d_predators[i].coord;
+	else if (dist < Particle::Rd && dist >= L/2)
 		d_particles[pid].dir = d_particles[pid].coord - d_predators[i].coord;
 	}	
 }
 //kernel that updates position and velocities to each particle
 __global__ void updateKernel (Particle *d_particles, int nParticles, Predator *d_predators, int nPredators, float systemSize, float2 *d_sumdir, float *d_c, float *d_dist, float* randArray, float *d_uniteIdx, float *d_uniteIdy){
 	float w = 1.0;
+	int childId;
 	int idx = threadIdx.x + blockIdx.x * blockDim.x;
 	if (idx >= nParticles)	//checking idx to be between 0 and maximum number of particles
 		return;
@@ -94,7 +105,19 @@ __global__ void updateKernel (Particle *d_particles, int nParticles, Predator *d
 	//alignment (update direction with respect to average direction of particles in vicinity)
 	d_particles[idx].dir.x = (w * d_particles[idx].dir.x + d_sumdir[idx].x) / (d_c[idx] + w);
 	d_particles[idx].dir.y = (w * d_particles[idx].dir.y + d_sumdir[idx].y) / (d_c[idx] + w);
+	//prey repulsion from predator
 	predRepulsion(d_particles, nParticles, d_predators, nPredators, systemSize, idx);
+	__syncthreads();
+	//checking of attack and birth of new individual with noise drawn from existing population
+	for (int i = 0; i < nPredators; i++){
+		float distPrey = calcDist(d_particles[idx].coord, d_predators[i].coord, systemSize);
+		if (distPrey < Predator::Ra){
+			d_particles[idx].coord.x = randArray[idx] * systemSize;
+			d_particles[idx].coord.x = randArray[idx+1] * systemSize;
+			childId = randArray[idx] * (nParticles-1);
+			d_particles[idx].eta = d_particles[childId].eta;
+		}
+	}
 	//calculate theta
 	d_particles[idx].theta = atan2(d_particles[idx].dir.y, d_particles[idx].dir.x);
 	//Adding noise to theta
@@ -113,15 +136,7 @@ __global__ void updateKernel (Particle *d_particles, int nParticles, Predator *d
 	d_particles[idx].coord.x = doPeriodic(d_particles[idx].coord.x, systemSize);		
 	d_particles[idx].coord.y = doPeriodic(d_particles[idx].coord.y, systemSize);		
 }
-inline __device__ __host__ float predDist(float2 a, float2 b, float L){
-	float dx, dy, dist;
-	dx = a.x - b.x;
-	dy = a.y - b.y;
-	dist = powf((powf(dx, 2) + powf(dy, 2)), 0.5);
-	return dist;
-}
-
-//kernel to update predator's position
+//function to update predator's position
 __host__ __device__ void predUpdater(Predator *h_predators, int nPredators, Particle *h_particles, int nParticles, float L){
 	float dist1, dist2, preyDist;
 	for (int i = 0; i < nPredators; i++){
@@ -133,9 +148,9 @@ __host__ __device__ void predUpdater(Predator *h_predators, int nPredators, Part
 				index = j+1;
 		}
 		preyDist = predDist(h_particles[index].coord, h_predators[i].coord, L);
-		if ( preyDist > L / 2 && preyDist < Predator::Rd)
+		if (preyDist > L / 2 && preyDist < Predator::Rd)
 			h_predators[i].dir = h_predators[i].coord - h_particles[index].coord;
-		else if ( preyDist <= L / 2 && preyDist < Predator::Rd)
+		else if (preyDist <= L / 2 && preyDist < Predator::Rd)
 			h_predators[i].dir = h_particles[index].coord - h_predators[i].coord;
 		h_predators[i].theta = atan2(h_predators[i].dir.y, h_predators[i].dir.x);
 		h_predators[i].dir.x = cos(h_predators[i].theta);

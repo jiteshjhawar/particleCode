@@ -18,10 +18,10 @@ int main (int argc, char *argv[]){
 	const float systemSize = 16.0;		
 	const int particles = 256;
 	const int nPred = 1;
-	const float maxeta = 1.0;		//maximum noise parameter
+	const float maxeta = 5.0;		//maximum noise parameter
 	float predNoise = 0.0;
 	const int realisations = 1;	//number of realisations
-	const int iterations = 15000;	//number of time steps
+	const int iterations = 50000;	//number of time steps
 	const int last = 100;			//number of last steps over which order parameter would be averaged
 	int c;
 	int *gsd;						//pointer to initialise array that stores different group size 

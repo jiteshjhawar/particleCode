@@ -15,7 +15,7 @@ void Particle::init(float systemSize, float noise){
 	dir.y = sin(theta);
 	vel.x = speed * dir.x;
 	vel.y = speed * dir.y;
-	eta = noise;
+	eta = (1.0 * rand() / RAND_MAX) * noise;
 }
 
 Particle::~Particle(){}
