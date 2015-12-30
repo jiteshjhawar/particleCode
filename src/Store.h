@@ -18,21 +18,25 @@ class Store{
 
 public:
 	float orientationParam;
+	float *eta;
 	ofstream fout;
-	stringstream ss;
+	ifstream fin;
+	stringstream ss, pf;
 	stringstream nf;
-	string out;
-	string name;	
+	string out, parseOut;
+	string name, parse;	
 	string format;
-	string finalName;
+	string finalName, parseFile;
+	float *noise;
 	
 public:
 	Store(int particles);	
 	void fileOpen();
-	void print(float theta);
+	void print(int i);
 	void printGroupSize(int groupSize);
 	void printTime(float time);
 	void fileClose();
+	float *parseAndReturn();
 	void endl();
 	~Store();
 

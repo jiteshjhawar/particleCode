@@ -22,28 +22,34 @@ public:
 	int nPredators;	
 	int size;
 	float systemSize;
-	int *h_id;
-	int *d_id;
-	int *h_sz;
-	int *d_sz;
-	Particle *h_particles;
-	Particle *d_particles;
-	Predator *h_predators;
-	Predator *d_predators;
-	float2 *d_sumdir;
-	float *h_uniteIdx, *h_uniteIdy;
-	float *d_uniteIdx, *d_uniteIdy;
-	float *d_c, *d_dist, *randArray;
-	float sumxspeed;
-	float sumyspeed;
-	float orderParam, msd;
+	int *h_id;		//host group id array
+	int *d_id;		//device group id array
+	int *h_sz;		//host group size array
+	int *d_sz;		//device group size array
+	Particle *h_particles;		//host Particle type array
+	Particle *d_particles;		//device Particle type array
+	Predator *h_predators;		//host Predator type array 
+	Predator *d_predators;		//device Predator type array
+	float2 *d_sumdir;			//device pointer to store summation of directions of near neighbours
+	float *h_uniteIdx, *h_uniteIdy;			//host array to store ids of individuals to be united
+	float *d_uniteIdx, *d_uniteIdy;			//device array to store ids of individuals to be united 
+	float *d_randNorm;			//device pointer to generate random number from a normal distribution
+	float *d_c, *d_dist, *randArray;		//d_c stores the number of near neighbours, d_dist is a 2D array that stores distances between
+											//each and every particle, randArray stores a random number genarated from a uniform 
+											//distribution in its each element
+	float sumxspeed;			//to store summation of x component of velocity
+	float sumyspeed;			//to store summation of y component of velocity
+	float orderParam, msd;		//orderParam is the average velocity of all the individuals
 	curandState *d_state;
+	float *d_preyPredDist, *d_preyPredDistNP;
+	int *d_attack, *h_attack;
 	
 public:
 	Swarm(int n, float L, int nPred);
 	void init(float noise);
 	void initPredator(float predNoise);
 	void initid();
+	void initAttack();
 	int allocate();
 	int cudaCopy();
 	int cudaCopyPred();

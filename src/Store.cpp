@@ -13,19 +13,34 @@ Store::Store(int particles){
 	/*for (int i = 0; i < iterations; i++){
 		msd[i] = 0.0;
 	}*/
+	eta = new float[particles];
+	noise = new float[particles];
 }
 
 void Store::fileOpen (){
-	out = "/home/jiteshjhawar/Documents/c++/cuda/particleGroupDist/output/";
-	name = "/orientationParamWithNoise";
+	out = "/home/jitesh/Documents/c++/cuda/particleAlignment/output/";
+	parseOut = "/home/jitesh/Documents/c++/cuda/output/";
+	name = "noiseDistributionEvolution";
+	parse = "parseNoiseVector";
 	format = ".csv";
 	ss << out << name << format;
+	pf << parseOut << parse << format;
 	finalName = ss.str();
+	parseFile = pf.str();
 	fout.open(finalName.c_str());
+	fin.open(parseFile.c_str());
+	
 }
 
-void Store::print(float theta){
-	fout << orientationParam << "," << theta;
+float* Store::parseAndReturn(){
+	for (int i = 0; i < 256; i++){
+		fin >> noise[i];
+	}
+	return noise;
+}
+
+void Store::print(int i){
+	fout << eta[i] << "\n";
 }
 
 void Store::printGroupSize(int groupSize){
@@ -45,4 +60,6 @@ void Store::fileClose(){
 }
 
 Store::~Store(){
+	delete []eta;
+	delete []noise;
 }

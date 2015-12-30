@@ -14,9 +14,9 @@ public:
 	float2 vel;	//velocity vector of a particle
 	float2 dir;	//direction vector of a particle
 	float theta;	//angle with x axis of the velocity vector of a particle
-	const static float speed = 0.05;
+	const static float speed = 0.04;
 	const static float Rd = 1.0;
-	const static float Ra = 0.01;
+	const static float Ra = 0.1;
 	float eta;
 	
 public:

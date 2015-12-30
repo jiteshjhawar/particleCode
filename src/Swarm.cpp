@@ -16,12 +16,14 @@ Swarm::Swarm(int n, float L, int nPred){
 	h_uniteIdx = new float[nParticles*nParticles];	//array to store the ids of particle which are neighbour of each other...
 	h_uniteIdy = new float[nParticles*nParticles];	//... These are later used to perform unite operations.
 	size = sizeof(Particle) * nParticles;
+	h_attack = new int[nPredators];
 }
 //initialise noise for each particle
 void Swarm::init(float noise){
-for (int i = 0; i < nParticles; i++){
+	for (int i = 0; i < nParticles; i++){
 		h_particles[i].init(systemSize, noise);
 	}
+
 }
 //initialise predator
 void Swarm::initPredator(float predNoise){
@@ -48,6 +50,17 @@ int Swarm::allocate(){
 	checkCudaErrors(cudaMalloc(&randArray, nParticles * sizeof(float)));
 	checkCudaErrors(cudaMalloc(&d_uniteIdx, nParticles * nParticles * sizeof(float)));
 	checkCudaErrors(cudaMalloc(&d_uniteIdy, nParticles * nParticles * sizeof(float)));
+	checkCudaErrors(cudaMalloc(&d_preyPredDist, sizeof(float) * nParticles * nPredators));
+	checkCudaErrors(cudaMalloc(&d_preyPredDistNP, sizeof(float) * nParticles * nPredators));
+	checkCudaErrors(cudaMalloc(&d_randNorm, sizeof(float) * nPredators));
+	checkCudaErrors(cudaMalloc(&d_attack, nPredators * sizeof(int)));
+}
+//initialize attack
+void Swarm::initAttack(){
+	for (int i = 0; i < nPredators; i++){
+		h_attack[i] = 0;
+	}
+	checkCudaErrors(cudaMemcpy(d_attack, h_attack, nPredators * sizeof(int), cudaMemcpyHostToDevice));
 }
 //Copy each attribute of Particle type array to the GPU which was initialised earlier on the CPU
 int Swarm::cudaCopy(){
@@ -69,6 +82,7 @@ int Swarm::grouping(){
 int Swarm::cudaBackCopy(){
 	checkCudaErrors(cudaMemcpy(h_particles, d_particles, size, cudaMemcpyDeviceToHost));
 	//checkCudaErrors(cudaMemcpy(h_predators, d_predators, sizeof(Predator) * nPredators, cudaMemcpyDeviceToHost));
+	checkCudaErrors(cudaMemcpy(h_attack, d_attack, nPredators * sizeof(int), cudaMemcpyDeviceToHost));
 }
 //function to copy unite IDs array from GPU to CPU
 int Swarm::cudaUniteIdBackCopy(){
@@ -121,6 +135,7 @@ Swarm::~Swarm(){
 	delete []h_sz;
 	delete []h_uniteIdx;
 	delete []h_uniteIdy;
+	delete []h_attack;
 	cudaFree(d_particles);
 	cudaFree(d_predators);
 	cudaFree(d_sumdir);
@@ -130,5 +145,7 @@ Swarm::~Swarm(){
 	cudaFree(randArray);
 	cudaFree(d_id);
 	cudaFree(d_sz);
+	cudaFree(d_randNorm);
+	cudaFree(d_attack);
 	
 }

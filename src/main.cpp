@@ -16,15 +16,16 @@ int main (int argc, char *argv[]){
 	time_t t;				
 	time(&t);
 	const float systemSize = 16.0;		
-	const int particles = 256;
+	const int particles = 128;
 	const int nPred = 1;
-	const float maxeta = 5.0;		//maximum noise parameter
+	const int wait = 1;
+	const float maxeta = 5;		//maximum noise parameter
 	float predNoise = 0.0;
 	const int realisations = 1;	//number of realisations
-	const int iterations = 50000;	//number of time steps
+	const int iterations = 2000000;	//number of time steps
 	const int last = 100;			//number of last steps over which order parameter would be averaged
 	int c;
-	int *gsd;						//pointer to initialise array that stores different group size 
+	//int *gsd;						//pointer to initialise array that stores different group size 
 	float timeElapsed;
 	Store store(particles);			//Store class object 
 	store.fileOpen();
@@ -33,12 +34,14 @@ int main (int argc, char *argv[]){
 	swarm.launchRandInit((unsigned long) t);
 	SimpleTimer time; time.reset();
 	time.start();
+	float avgEta = 0.0;
 	for (float eta = maxeta; eta <= maxeta; eta = eta + 0.2){		//loop to iterate over different noise values
 		store.orientationParam = 0.0;				//initialize OP to zero before each round of replication
 		for (int rep = 0; rep < realisations; rep++){		//loop to perform more number of realizations
 			swarm.init(eta);
 			swarm.initPredator(predNoise);
 			swarm.initid();
+			swarm.initAttack();
 			swarm.cudaCopy();
 			Screen screen;
 			if (screen.init() == false){
@@ -50,11 +53,16 @@ int main (int argc, char *argv[]){
 				const Particle * const pParticles = swarm.returnParticles();	//store the particle
 				for (int p = 0; p < particles; p++){
 					Particle particle = pParticles[p];
+					avgEta = avgEta + particle.eta;
+					}
+				avgEta = avgEta / particles;
+				for (int p = 0; p < particles; p++){
+					Particle particle = pParticles[p];
 
 					int x = particle.coord.x * Screen::SCREEN_WIDTH / systemSize;
 					int y = particle.coord.y * Screen::SCREEN_HEIGHT / systemSize;
 					//store.printCoord(x,y);
-					screen.setPixel(x, y, 125, 255, 125);
+					screen.setPixel(x, y, int(255 * particle.eta / maxeta), 0, int(255 * abs(maxeta - particle.eta) / maxeta));
 					}
 				const Predator * const pPredators = swarm.returnPredators();
 				for (int p = 0; p < nPred; p++){
@@ -63,7 +71,7 @@ int main (int argc, char *argv[]){
 					int x = predator.coord.x * Screen::SCREEN_WIDTH / systemSize;
 					int y = predator.coord.y * Screen::SCREEN_HEIGHT / systemSize;
 					//store.printCoord(x,y);
-					screen.setPixel(x, y, 255, 0, 0);
+					screen.setPixel(x, y, 0, 0, 0);
 					}
 				screen.update();	
 				if (i >= iterations - last){
@@ -73,20 +81,29 @@ int main (int argc, char *argv[]){
 				if (screen.processEvents() == false){
 					break;
 				}
+				if (i%10000 == 0){
+					for (int p = 0; p < particles; p++){
+						Particle particle = pParticles[p];
+						store.eta[p] = particle.eta;
+						store.print(p);
+					}
+					store.endl();
+				}
+				if (i%wait == 0) swarm.initAttack();
 			}
 			screen.close();
-			if (cudaDeviceSynchronize() != cudaSuccess)
+			/*if (cudaDeviceSynchronize() != cudaSuccess)
 				cout << "Device synchronisation failed \n";
 			swarm.cudaUniteIdBackCopy();
 			swarm.grouping();
 			c = swarm.findgroups();
-			//cout << "number of independent groups are " << c << "\n";
+			cout << "number of independent groups are " << c << "\n";
 			gsd = new int[c];
 			swarm.calcgsd(gsd);
 			for (int i = 0; i < c; i++){
 				store.printGroupSize(gsd[i]);
 			}
-			store.endl();	
+			store.endl();*/	
 		}
 		/*store.endl();
 		store.orientationParam = store.orientationParam / realisations / last;
@@ -99,6 +116,6 @@ int main (int argc, char *argv[]){
 	store.printTime(timeElapsed);
 	store.fileClose();
 	
-	delete []gsd;
+	//delete []gsd;
 	return 0;
 }
